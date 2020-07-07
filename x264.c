@@ -1909,6 +1909,59 @@ do\
     }\
 } while( 0 )
 
+#define MIN_U					77
+#define MAX_U					127
+#define MIN_V					133
+#define MAX_V					173
+	
+static void x264_down_yuv(x264_picture_t *pic_in, int32_t scale, x264_picture_t *down_pic, uint32_t i_width, uint32_t i_heigth)
+{
+	uint8_t *org_y = pic_in->img.plane[0];
+	uint8_t *org_u = pic_in->img.plane[1];
+	uint8_t *org_v = pic_in->img.plane[2];
+	
+	/*uint32_t i_width = 1920;
+	uint32_t i_heigth = 1080;*/
+	uint32_t i_stride = i_width;
+		
+	int32_t i_down_w = ((i_width / BLOCKSIZE) * BLOCKSIZE) / scale;
+	int32_t i_down_h = ((i_heigth / BLOCKSIZE) * BLOCKSIZE) / scale;
+		
+	int32_t i, j;
+	int32_t i_scl_offset, i_org_offset, i_down_offset;
+		
+	// luma down sample
+	i_scl_offset = scale * i_stride;
+	i_org_offset = 0;
+	i_down_offset = 0;
+		
+	for (j = 0; j < i_down_h; j++)
+	{
+		for (i = 0; i < i_down_w; i++)
+		{
+			down_pic->img.plane[0][i_down_offset + i] = org_y[i_org_offset + i*scale];
+		}
+		i_down_offset += i_down_w;
+		i_org_offset += i_scl_offset;
+	}
+	
+	// chroma down sample
+	i_scl_offset = scale * i_stride >> 1;
+	i_org_offset = 0;
+	i_down_offset = 0;
+	for (j = 0; j < i_down_h / 2; j++)
+	{
+		for (i = 0; i < i_down_w / 2; i++)
+		{
+			down_pic->img.plane[1][i_down_offset + i] = org_u[i_org_offset + i*scale];
+			down_pic->img.plane[2][i_down_offset + i] = org_v[i_org_offset + i*scale];
+		}
+		i_down_offset += i_down_w / 2;
+		i_org_offset += i_scl_offset;
+	}
+}
+
+
 static int encode( x264_param_t *param, cli_opt_t *opt )
 {
     x264_t *h = NULL;
@@ -2012,6 +2065,26 @@ static int encode( x264_param_t *param, cli_opt_t *opt )
 
         if( opt->qpfile )
             parse_qpfile( opt, &pic, i_frame + opt->i_seek );
+
+		x264_picture_t down_pic;
+		
+		x264_picture_init(&down_pic);
+		x264_picture_alloc(&down_pic, X264_CSP_I420, 1920, 1088);
+		
+		x264_down_yuv(&pic, 4, &down_pic, 1920, 1080);
+
+		// output the down sample Y, U and V. Save
+		FILE *fp1 = fopen("down_y.y", "wb+");
+		FILE *fp2 = fopen("down_u.y", "wb+");
+		FILE *fp3 = fopen("down_v.y", "wb+");
+		
+		fwrite(down_pic.img.plane[0], 1, 480 * 272, fp1);
+		fwrite(down_pic.img.plane[1], 1, (480 * 272) >> 2, fp2);
+		fwrite(down_pic.img.plane[2], 1, (480 * 272) >> 2, fp3);
+
+		fclose(fp1);
+		fclose(fp2);
+		fclose(fp3);
 
         prev_dts = last_dts;
         i_frame_size = encode_frame( h, opt->hout, &pic, &last_dts );
