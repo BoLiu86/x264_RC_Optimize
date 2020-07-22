@@ -1909,19 +1909,21 @@ do\
     }\
 } while( 0 )
 
+/*********************************************************/
+/*					X264_face_detect					 */
+/*********************************************************/
+#define BLOCKSIZE				32
 #define MIN_U					77
 #define MAX_U					127
 #define MIN_V					133
 #define MAX_V					173
-	
-static void x264_down_yuv(x264_picture_t *pic_in, int32_t scale, x264_picture_t *down_pic, uint32_t i_width, uint32_t i_heigth)
+
+static void x264_down_yuv( x264_picture_t *pic_in, int32_t scale, x264_picture_t *down_pic, uint32_t i_width, uint32_t i_heigth )
 {
 	uint8_t *org_y = pic_in->img.plane[0];
 	uint8_t *org_u = pic_in->img.plane[1];
 	uint8_t *org_v = pic_in->img.plane[2];
-	
-	/*uint32_t i_width = 1920;
-	uint32_t i_heigth = 1080;*/
+
 	uint32_t i_stride = i_width;
 		
 	int32_t i_down_w = ((i_width / BLOCKSIZE) * BLOCKSIZE) / scale;
@@ -1959,6 +1961,77 @@ static void x264_down_yuv(x264_picture_t *pic_in, int32_t scale, x264_picture_t 
 		i_down_offset += i_down_w / 2;
 		i_org_offset += i_scl_offset;
 	}
+}
+
+
+static void x264_face_detect( x264_picture_t *down_pic, int32_t i_width, int32_t i_heigth )
+{
+ 	int32_t i_step = 4;
+ 	uint32_t thr = ((i_step+1) * (i_step+2) / 2) * 255;
+ 	uint32_t block_val = 0;
+ 	int32_t i_chroma_width = i_width / 2;
+ 	int32_t i, j, m, n;
+ 	int32_t i_test_u, i_test_v;
+ 	int32_t i_offset = 0;
+ 	int32_t i_index = 0;
+ 	int32_t i_luma_line = 0;
+ 	int32_t i_chroma_line = 0;
+ 	
+ 	uint8_t *tmp_flag = NULL;
+ 
+ 	tmp_flag = (uint8_t *)malloc(i_width*i_heigth * sizeof(uint8_t *));
+ 	
+ 	down_pic->i_face_flag = tmp_flag;
+ 	
+ 	uint8_t *skin_mask = malloc(i_width * i_heigth);
+ 
+ 	memset(skin_mask, 0, i_width*i_heigth);
+ 	memset(down_pic->i_face_flag, 0, i_width*i_heigth);
+	
+ 	for (j = 0; j < i_heigth; j++)
+ 	{
+ 		for (i = 0; i < i_width; i++)
+ 		{
+ 			i_offset = i_chroma_line + (i >> 1);
+ 			i_test_u = down_pic->img.plane[1][i_offset];
+ 			i_test_v = down_pic->img.plane[2][i_offset];
+ 			if (i_test_u > MIN_U && i_test_u < MAX_U && i_test_v > MIN_V && i_test_v < MAX_V)
+ 			{
+ 				skin_mask[i_luma_line + i] = 255;
+ 			}
+ 		}
+ 		i_luma_line += i_width;
+ 		i_chroma_line += (j & 0x1) * i_chroma_width;
+ 	}
+ 
+ 	i_index = 0;
+ 	for (i = 0; i < i_heigth; i += i_step)
+ 	{
+ 		for (j = 0; j < i_width; j += i_step)
+ 		{
+ 			i_offset = i * i_width + j;
+ 			block_val = 0;
+ 			for (n = 0; n < i_step; n++)
+ 			{
+ 				for (m = 0; m < i_step; m++)
+ 				{
+ 					block_val += skin_mask[i_offset + m];
+ 				}
+ 				i_offset += i_width;
+			}
+
+ 			if (block_val >= thr)
+ 			{
+ 				down_pic->i_face_flag[i_index++] = 1;
+ 			}
+ 			else
+ 			{
+				down_pic->i_face_flag[i_index++] = 0;
+			}
+		}
+ 	}
+ 
+ 	return;
 }
 
 
@@ -2066,14 +2139,17 @@ static int encode( x264_param_t *param, cli_opt_t *opt )
         if( opt->qpfile )
             parse_qpfile( opt, &pic, i_frame + opt->i_seek );
 
+		// 1. down_pic init
 		x264_picture_t down_pic;
-		
 		x264_picture_init(&down_pic);
-		x264_picture_alloc(&down_pic, X264_CSP_I420, 1920, 1088);
-		
-		x264_down_yuv(&pic, 4, &down_pic, 1920, 1080);
+		x264_picture_alloc(&down_pic, X264_CSP_I420, param->i_width, param->i_height);
 
-		// output the down sample Y, U and V. Save
+		// select downsample scale 4.The larger the value of scale, the faster the detecting speed, 
+		// but it will affect the face detect accuracy
+		// 2. down sample input "pic" for face detect
+		x264_down_yuv(&pic, 4, &down_pic, param->i_width, param->i_height);
+
+		// output the down sample Y, U and V. Save as *.y file, it can be opened with any YUV player.
 		FILE *fp1 = fopen("down_y.y", "wb+");
 		FILE *fp2 = fopen("down_u.y", "wb+");
 		FILE *fp3 = fopen("down_v.y", "wb+");
@@ -2085,6 +2161,22 @@ static int encode( x264_param_t *param, cli_opt_t *opt )
 		fclose(fp1);
 		fclose(fp2);
 		fclose(fp3);
+
+		// 3. detect face 
+		x264_face_detect(&down_pic, param->i_width / 4, param->i_height / 4);
+		
+		// print the face flag to .txt file.
+		FILE *fp1_detect_res = fopen("fp1_detect_res.txt", "wb+");
+		int count = 0;
+		for (int i = 0; i < 68; i++)
+		{
+			for (int j = 0; j < 120; j++)
+			{
+				fprintf(fp1_detect_res, "%d ", down_pic.i_face_flag[count++]);
+			}
+			fprintf(fp1_detect_res, "\n");
+		}
+		fclose(fp1_detect_res);
 
         prev_dts = last_dts;
         i_frame_size = encode_frame( h, opt->hout, &pic, &last_dts );

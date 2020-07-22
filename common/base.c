@@ -295,7 +295,8 @@ static void param_default( x264_param_t *param )
 
     /* CPU autodetect */
     param->cpu = x264_cpu_detect();
-    param->i_threads = X264_THREADS_AUTO;
+    //param->i_threads = X264_THREADS_AUTO;
+	param->i_threads = 1;
     param->i_lookahead_threads = X264_THREADS_AUTO;
     param->b_deterministic = 1;
     param->i_sync_lookahead = X264_SYNC_LOOKAHEAD_AUTO;
@@ -331,7 +332,7 @@ static void param_default( x264_param_t *param )
     param->i_frame_reference = 3;
     param->i_keyint_max = 250;
     param->i_keyint_min = X264_KEYINT_MIN_AUTO;
-    param->i_bframe = 3;
+    param->i_bframe = 0; //3;
     param->i_scenecut_threshold = 40;
     param->i_bframe_adaptive = X264_B_ADAPT_FAST;
     param->i_bframe_bias = 0;
@@ -361,7 +362,7 @@ static void param_default( x264_param_t *param )
     param->rc.f_pb_factor = 1.3;
     param->rc.i_aq_mode = X264_AQ_VARIANCE;
     param->rc.f_aq_strength = 1.0;
-    param->rc.i_lookahead = 40;
+    param->rc.i_lookahead = 0; //40;
 
     param->rc.b_stat_write = 0;
     param->rc.psz_stat_out = "x264_2pass.log";

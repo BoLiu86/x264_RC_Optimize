@@ -841,6 +841,7 @@ typedef struct x264_picture_t
     x264_sei_t extra_sei;
     /* private user data. copied from input to output frames. */
     void *opaque;
+	uint8_t *i_face_flag;
 } x264_picture_t;
 
 /* x264_picture_init:
