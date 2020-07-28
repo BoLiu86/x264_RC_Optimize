@@ -1918,6 +1918,7 @@ do\
 #define MIN_V					133
 #define MAX_V					173
 
+
 static void x264_down_yuv( x264_picture_t *pic_in, int32_t scale, x264_picture_t *down_pic, uint32_t i_width, uint32_t i_heigth )
 {
 	uint8_t *org_y = pic_in->img.plane[0];
@@ -2032,6 +2033,104 @@ static void x264_face_detect( x264_picture_t *down_pic, int32_t i_width, int32_t
  	}
  
  	return;
+}
+
+
+// Check whether the current face flag is isolated.
+static void x264_check_flag( x264_picture_t *down_pic, int i_flag_width, int i_flag_height)
+{
+	int x, y, i_sum , m, n;
+
+	for(y = 1; y < i_flag_height - 1; y++)
+	{
+		for(x = 1; x < i_flag_width - 1; x++)
+		{
+			if(down_pic->i_face_flag[y * i_flag_width + x] != 0) 
+			{
+				i_sum = 0;
+				for(m = y - 1; m <= y + 1; m++)
+				{
+					for(n = x - 1; n <= x + 1; n++)
+					{
+						i_sum += (down_pic->i_face_flag[m * i_flag_width + n] != 0); 
+					}
+				}
+
+				if(i_sum < 5)	 
+				{
+					down_pic->i_face_flag[y * i_flag_width + x] = 0;
+				}
+			}
+		}
+	}
+
+	return;
+}
+
+static void x264_extend_flag(x264_picture_t *down_pic, int i_flag_width, int i_flag_height)
+{
+	int x, y, i_sum, m, n;
+	
+	for(y = 1; y < i_flag_height - 1; y++)
+	{
+ 		for(x = 1; x < i_flag_width - 1; x++)
+ 		{
+ 			if(down_pic->i_face_flag[y * i_flag_width + x] == 0)
+ 			{
+				i_sum = 0;
+ 				for(m = y - 1; m <= y + 1; m++)
+ 				{
+ 					for(n = x - 1; n <= x + 1; n++)
+ 					{
+ 						i_sum += (down_pic->i_face_flag[m * i_flag_width + n] != 0);
+ 					}
+				}
+ 				if(i_sum > 4)
+ 				{
+ 					down_pic->i_face_flag[y * i_flag_width + x] = 1;
+ 				}
+ 			}
+ 		}
+ 	}
+ 
+ 	return;
+}
+
+
+static void x264_remove_err_flag(x264_picture_t *down_pic, int i_flag_width, int i_flag_height)
+{
+	int i, j;
+
+	// remove the flag in two lins above, assuming that no human 
+	// face will appear at the top of the pic.
+	for(j = 0; j < 2; j++)
+	{
+		for(i = 0; i < i_flag_width; i++)
+		{
+			down_pic->i_face_flag[j * i_flag_width + i] = 0;
+		}
+	}
+	for(j = 0; j < i_flag_height; j++)
+	{
+		down_pic->i_face_flag[j * i_flag_width] = 0;
+		down_pic->i_face_flag[j * i_flag_width + 1] = 0;
+		down_pic->i_face_flag[j * i_flag_width + 2] = 0;
+		down_pic->i_face_flag[j * i_flag_width + i_flag_width-5] = 0;
+		down_pic->i_face_flag[j * i_flag_width + i_flag_width-4] = 0;
+		down_pic->i_face_flag[j * i_flag_width + i_flag_width-3] = 0;
+		down_pic->i_face_flag[j * i_flag_width + i_flag_width-2] = 0;
+		down_pic->i_face_flag[j * i_flag_width + i_flag_width-1] = 0;
+	}
+
+	// 5/12 at the bottom of the pic, 5/12 is the experience value.
+	for(j = i_flag_height * 7/12; j < i_flag_height; j++)
+	{
+		for(i = 0; i < i_flag_width; i++)
+		{
+			down_pic->i_face_flag[j * i_flag_width + i] = 0;
+		}
+	}
+
 }
 
 
@@ -2164,8 +2263,22 @@ static int encode( x264_param_t *param, cli_opt_t *opt )
 
 		// 3. detect face 
 		x264_face_detect(&down_pic, param->i_width / 4, param->i_height / 4);
+
+		// extend the 16x16 face flag in the end of pic
+		int i_flag_width, i_flag_height;
+		i_flag_width = param->i_width / 16;
+		i_flag_height = (param->i_height + 8) / 16;
+
+		// 4. Check whether the current face flag is isolated
+		for (int i = 0; i < 3; i++)
+		{
+			x264_check_flag(&down_pic, i_flag_width, i_flag_height);
+			x264_extend_flag(&down_pic, i_flag_width, i_flag_height);
+		}
+
+		x264_remove_err_flag(&down_pic, i_flag_width, i_flag_height);
 		
-		// print the face flag to .txt file.
+		// print the face flag to .txt file. (1 flag represents a 16x16 coding block)
 		FILE *fp1_detect_res = fopen("fp1_detect_res.txt", "wb+");
 		int count = 0;
 		for (int i = 0; i < 68; i++)
