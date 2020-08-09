@@ -2277,6 +2277,55 @@ static int encode( x264_param_t *param, cli_opt_t *opt )
 		}
 
 		x264_remove_err_flag(&down_pic, i_flag_width, i_flag_height);
+
+
+		// output the ROI area(aka human face)
+		int width = 1920;
+		int height = 1080;
+		int flag_stride = width /16; // for 16x16 MB
+		int a= 0;
+
+		FILE *fp_yuv =fopen("down_roi.yuv", "wb+");
+		char *buf = (char *)malloc(width * height * 3 / 2);
+		uint8_t *i_flag = (uint8_t *)malloc(1920 * 1088);
+		memset(i_flag, 0, 1920 * 1088);
+
+		// luma
+		for (int i = 0; i < height; i++)
+		{
+			memcpy(buf + a, &pic.img.plane[0][i * width], width);
+			a += width;
+		}
+
+		for(int h = 0; h < 1088; h++)
+		{
+			for(int w = 0; w <1920; w++)
+			{
+				int flag_w = w /16;
+				int flag_h = h /16;
+				if(down_pic.i_face_flag[flag_w + flag_h * flag_stride] == 0)
+				{
+					i_flag[w + h * 1920] = 1;
+				}
+			}
+		}
+		
+		for(int h = 0; h < 1088; h++)
+		{
+			for(int w = 0; w <1920; w++)
+			{
+				if(i_flag[w + h * 1920] == 1)
+				{
+					buf[w + h * 1920] = 0;
+				}
+			}
+		}
+		
+		fwrite(buf, 1, width * height, fp_yuv);
+		free(buf);
+		buf = NULL;
+		fclose(fp_yuv);
+		
 		
 		// print the face flag to .txt file. (1 flag represents a 16x16 coding block)
 		FILE *fp1_detect_res = fopen("fp1_detect_res.txt", "wb+");
