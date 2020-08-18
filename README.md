@@ -23,7 +23,7 @@ Face detect-based Rate Control for x264
 --具体如下：```x264.exe --frames 600 --bitrate 1024 --vbv-bufsize 1024 --vbv-maxrate 1024 -o Johnny_1920x1080_60p_1024.264 Johnny_1920x1080_60p.yuv```
 
 ## Results
-![Alt text](./face_res_new.png)
+![Alt text](https://github.com/Ronater/x264_RC_Optimize/blob/master/face_res_new.png)
 
 
 ## References
