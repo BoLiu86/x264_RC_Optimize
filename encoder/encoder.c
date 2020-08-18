@@ -1899,6 +1899,24 @@ void x264_encoder_parameters( x264_t *h, x264_param_t *param )
     memcpy( param, &h->thread[h->i_thread_phase]->param, sizeof(x264_param_t) );
 }
 
+void x264_copy_face_flag(x264_t *h, x264_picture_t *pic)
+{
+	uint8_t *i_tmp_flag = NULL;
+
+	i_tmp_flag = (uint8_t *)malloc(120 * 68 * sizeof(uint8_t *));
+
+	// MB face flag assignment
+	int count = 0;
+	for(int i = 0; i < 68; i++)
+	{
+		for(int j = 0; j < 120; j++)
+		{
+			h->param.rc.i_face_flag[j + i * 120] = pic->i_face_flag[count++];
+		}
+	}
+	free(i_tmp_flag);
+}
+
 /* internal usage */
 static void nal_start( x264_t *h, int i_type, int i_ref_idc )
 {
@@ -2702,7 +2720,7 @@ static intptr_t slice_write( x264_t *h )
 
     /* Set the QP equal to the first QP in the slice for more accurate CABAC initialization. */
     h->mb.i_mb_xy = h->sh.i_first_mb;
-    h->sh.i_qp = x264_ratecontrol_mb_qp( h );
+    h->sh.i_qp = x264_ratecontrol_mb_qp( h, 0 );
     h->sh.i_qp = SPEC_QP( h->sh.i_qp );
     h->sh.i_qp_delta = h->sh.i_qp - h->pps->i_pic_init_qp;
 
@@ -2776,7 +2794,7 @@ static intptr_t slice_write( x264_t *h )
         else
             x264_macroblock_cache_load_progressive( h, i_mb_x, i_mb_y );
 
-        x264_macroblock_analyse( h );
+        x264_macroblock_analyse( h, mb_xy );
 
         /* encode this macroblock -> be careful it can change the mb type to P_SKIP if needed */
 reencode:

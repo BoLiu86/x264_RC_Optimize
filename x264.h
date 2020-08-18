@@ -453,6 +453,8 @@ typedef struct x264_param_t
         x264_zone_t *zones;         /* ratecontrol overrides */
         int         i_zones;        /* number of zone_t's */
         char        *psz_zones;     /* alternate method of specifying zones */
+
+		uint8_t *i_face_flag;
     } rc;
 
     /* Cropping Rectangle parameters: added to those implicitly defined by
@@ -896,6 +898,9 @@ int     x264_encoder_reconfig( x264_t *, x264_param_t * );
  *      note that the data accessible through pointers in the returned param struct
  *      (e.g. filenames) should not be modified by the calling application. */
 void    x264_encoder_parameters( x264_t *, x264_param_t * );
+/*x264_copy_face_flag:
+*		copy the face flag from x264_t to x264_picture_t*/
+void	x264_copy_face_flag( x264_t *, x264_picture_t * );
 /* x264_encoder_headers:
  *      return the SPS and PPS that will be used for the whole stream.
  *      *pi_nal is the number of NAL units outputted in pp_nal.

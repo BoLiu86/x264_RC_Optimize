@@ -2328,17 +2328,17 @@ static int encode( x264_param_t *param, cli_opt_t *opt )
 		
 		
 		// print the face flag to .txt file. (1 flag represents a 16x16 coding block)
-		FILE *fp1_detect_res = fopen("fp1_detect_res.txt", "wb+");
+		FILE *fp_detect_res = fopen("fp_detect_res.txt", "wb+");
 		int count = 0;
 		for (int i = 0; i < 68; i++)
 		{
 			for (int j = 0; j < 120; j++)
 			{
-				fprintf(fp1_detect_res, "%d ", down_pic.i_face_flag[count++]);
+				fprintf(fp_detect_res, "%d ", down_pic.i_face_flag[count++]);
 			}
-			fprintf(fp1_detect_res, "\n");
+			fprintf(fp_detect_res, "\n");
 		}
-		fclose(fp1_detect_res);
+		fclose(fp_detect_res);
 
         prev_dts = last_dts;
         i_frame_size = encode_frame( h, opt->hout, &pic, &last_dts );

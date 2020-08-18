@@ -1738,19 +1738,28 @@ int x264_ratecontrol_qp( x264_t *h )
     return x264_clip3( h->rc->qpm + 0.5f, h->param.rc.i_qp_min, h->param.rc.i_qp_max );
 }
 
-int x264_ratecontrol_mb_qp( x264_t *h )
+int x264_ratecontrol_mb_qp( x264_t *h, int mb_pos )
 {
     x264_emms();
     float qp = h->rc->qpm;
-    if( h->param.rc.i_aq_mode )
-    {
-         /* MB-tree currently doesn't adjust quantizers in unreferenced frames. */
-        float qp_offset = h->fdec->b_kept_as_ref ? h->fenc->f_qp_offset[h->mb.i_mb_xy] : h->fenc->f_qp_offset_aq[h->mb.i_mb_xy];
-        /* Scale AQ's effect towards zero in emergency mode. */
-        if( qp > QP_MAX_SPEC )
-            qp_offset *= (QP_MAX - qp) / (QP_MAX - QP_MAX_SPEC);
-        qp += qp_offset;
-    }
+
+	// Determine whether to use AQ based on face flag
+	if (h->param.rc.i_face_flag[mb_pos] != 1)
+	{
+		return x264_clip3( qp + 0.5f, h->param.rc.i_qp_min, h->param.rc.i_qp_max );
+	}
+	else
+	{
+    	if( h->param.rc.i_aq_mode )
+    	{
+      	   /* MB-tree currently doesn't adjust quantizers in unreferenced frames. */
+     	   float qp_offset = h->fdec->b_kept_as_ref ? h->fenc->f_qp_offset[h->mb.i_mb_xy] : h->fenc->f_qp_offset_aq[h->mb.i_mb_xy];
+     	   /* Scale AQ's effect towards zero in emergency mode. */
+      	  if( qp > QP_MAX_SPEC )
+      	      qp_offset *= (QP_MAX - qp) / (QP_MAX - QP_MAX_SPEC);
+    	    qp += qp_offset;
+  	  }
+	}
     return x264_clip3( qp + 0.5f, h->param.rc.i_qp_min, h->param.rc.i_qp_max );
 }
 

@@ -70,7 +70,7 @@ int  x264_ratecontrol_mb( x264_t *, int bits );
 #define x264_ratecontrol_qp x264_template(ratecontrol_qp)
 int  x264_ratecontrol_qp( x264_t * );
 #define x264_ratecontrol_mb_qp x264_template(ratecontrol_mb_qp)
-int  x264_ratecontrol_mb_qp( x264_t *h );
+int  x264_ratecontrol_mb_qp( x264_t *h, int mb_pos );
 #define x264_ratecontrol_end x264_template(ratecontrol_end)
 int  x264_ratecontrol_end( x264_t *, int bits, int *filler );
 #define x264_ratecontrol_summary x264_template(ratecontrol_summary)

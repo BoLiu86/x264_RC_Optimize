@@ -2903,12 +2903,12 @@ static inline void mb_analyse_qp_rd( x264_t *h, x264_mb_analysis_t *a )
 /*****************************************************************************
  * x264_macroblock_analyse:
  *****************************************************************************/
-void x264_macroblock_analyse( x264_t *h )
+void x264_macroblock_analyse( x264_t *h, int mb_pos )
 {
     x264_mb_analysis_t analysis;
     int i_cost = COST_MAX;
 
-    h->mb.i_qp = x264_ratecontrol_mb_qp( h );
+    h->mb.i_qp = x264_ratecontrol_mb_qp( h, mb_pos );
     /* If the QP of this MB is within 1 of the previous MB, code the same QP as the previous MB,
      * to lower the bit cost of the qp_delta.  Don't do this if QPRD is enabled. */
     if( h->param.rc.i_aq_mode && h->param.analyse.i_subpel_refine < 10 )
