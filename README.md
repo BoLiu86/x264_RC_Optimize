@@ -2,14 +2,16 @@
 Face detect-based Rate Control for x264
 
 基于人脸检测的x264码率控制算法优化
+- 相比于x264原编码器，可以平均节省1.86%码率，PSNR可以平均提升1.09，VMAF可以平均提升3.4279分，相对应的编码时间平均增加7%左右。
+- 所提出的人脸检测算法，可以实现1080P的图像检测一帧平均耗时1.60毫秒。
 
 ## History
 - 2020/06/16  上传x264-snapshot-20191217-2245-stable作为baseline。
 - 2020/07/07  读入待编码图像，完成逐帧下采样。由于目前仅针对IPP...P编码模式尽心RC优化，关闭x264的lookahead功能。
 - 2020/07/22  利用U、V分量，逐像素判断编码图像中是否存在人脸。若存在并且像素数大于一定范围，则以MB为单位标记。
 - 2020/07/28  优化检测算法，去除孤立的人脸标志。
-- 2020/08/09  输出人脸检测结果
-- 2020/08/18 使用每个MB的人脸检测结果判断是否使用AQ方法、更新Usages和实验结果  
+- 2020/08/09  输出人脸检测结果。
+- 2020/08/18 使用每个MB的人脸检测结果判断是否使用AQ方法、更新Usages和实验结果。
 
 ## Usages
 - Windows下，编译x264需要搭建MinGW和msys的环境。编译环境搭建好之后，可执行：**1)**`./configure --enable-shared` **2)**`make` **3)**`make install`生成可执行程序和动态库测试编码效果。
@@ -23,8 +25,7 @@ Face detect-based Rate Control for x264
 --具体如下：```x264.exe --frames 600 --bitrate 1024 --vbv-bufsize 1024 --vbv-maxrate 1024 -o Johnny_1920x1080_60p_1024.264 Johnny_1920x1080_60p.yuv```
 
 ## Results
-![Alt text](https://github.com/Ronater/x264_RC_Optimize/blob/master/face_res_new.png)
-
+![face_flag_result](https://img-blog.csdnimg.cn/20200819231037211.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L1JvbmF0ZXI=,size_16,color_FFFFFF,t_70#pic_center)
 
 ## References
 [1]【x264历史版本】http://download.videolan.org/pub/videolan/x264/snapshots/
